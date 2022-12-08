@@ -1,6 +1,9 @@
 package com.hugo.week5.service;
 
+import com.hugo.week5.exception.UserAlreadyExistsException;
+import com.hugo.week5.exception.UserNotFoundException;
 import com.hugo.week5.model.Users;
+import com.hugo.week5.model.UsersDTO;
 import com.hugo.week5.repository.UsersRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -17,35 +20,54 @@ public class UsersService {
         return usersRepository.findAll();
     }
 
-    public Users getUserByEmail(String email) {
+    public UsersDTO getUserByEmail(String email) {
 
-        if (usersRepository.findById(email).isPresent()) {
-            return usersRepository.findById(email).get();
-        }
-        return null;
+        validateIfUserExistsByEmail(email);
+
+        Users user = usersRepository.findById(email).get();
+
+        return new UsersDTO(user.getFirstName(), user.getLastName(), user.getPhoneNumber());
 
     }
 
-    public Users createUser(Users user) throws Exception {
+    public Users createUser(Users user) throws UserAlreadyExistsException {
+
         if (usersRepository.existsById(user.getEmail())){
-            throw new Exception("The user already exists with the given email account");
+            throw new UserAlreadyExistsException(user.getEmail());
         }
+
         return usersRepository.save(user);
+
     }
 
     public void deleteUser(String email) {
+
+        validateIfUserExistsByEmail(email);
+
         usersRepository.deleteById(email);
+
     }
 
-    public void updateUser(String email, Users newUser) {
+    public void updateUser(String email, UsersDTO newUser) {
 
-        Users oldUser = getUserByEmail(email);
+        validateIfUserExistsByEmail(email);
 
+        Users oldUser = getUserByEmail(email).transformToUser();
+
+        oldUser.setEmail(email);
         oldUser.setLastName(newUser.getLastName());
         oldUser.setFirstName(newUser.getFirstName());
         oldUser.setPhoneNumber(newUser.getPhoneNumber());
 
         usersRepository.save(oldUser);
+
+    }
+
+    public void validateIfUserExistsByEmail(String email){
+
+        if (!usersRepository.existsById(email)){
+            throw new UserNotFoundException(email);
+        }
 
     }
 
